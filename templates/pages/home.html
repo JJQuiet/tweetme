@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block head_title %}home{% endblock %}
+{% block content %}
+<div class="row text-center">
+    <div class="col">
+        <h1>
+            Welcome to Tweetme
+        </h1>
+    </div>
+</div>
+<div class="row mb-3">
+    <div class="col-lg-4 mx-auto col-10">
+        <form class='form' method='POST' id='tweet-create-form' action="/create-tweet">{% csrf_token %}
+            <!-- <input type="hidden" value='/not-a-real-page' name='next'> -->
+            <!-- 改成not-a-real-page可以不用redirect直接再次loadTweets -->
+            <div class="d-none alert alert-danger" id="tweet-create-form-error"></div>
+            <input type="hidden" value='/' name='next'>
+            <textarea required class='form-control' name="content" placeholder="Your content"></textarea>
+            <button type='submit' class='btn btn-primary'>Tweet</button>
+        </form>
+    </div>
+</div>
+<div class='row' id="tweets">
+     
+</div>
+{% endblock content %}
+{% block scripts %}
+<script>
+    function handleTweetFormError(msg, display) {
+        var myErrorDiv = document.getElementById("tweet-create-form-error")
+        if (display === true ) {
+            //show error
+            myErrorDiv.setAttribute('class', 'd-block alert alert-danger')
+            myErrorDiv.innerHTML = msg
+        } else {
+            myErrorDiv.setAttribute('class', 'd-none alert alert-danger')
+
+        }
+    }
+    function handleTweetCreateFormDidSubmit(event) {
+        event.preventDefault()
+        const myForm =  event.target
+        const myFormData = new FormData(myForm)
+        $.ajax({
+            type: "POST",
+            url: "/create-tweet",
+            data: {
+                'csrfmiddlewaretoken': Cookies.get('csrftoken'),
+                'content': $('[name=content]').val()
+            },
+            success: function(data) {
+                console.log(data)
+            },
+        })
+        /*
+        const url = myForm.getAttribute('action')
+        const method = myForm.getAttribute('method')
+        const xhr = new XMLHttpRequest()
+        const responseType = "json"
+        xhr.responseType = responseType
+        xhr.open(method, url)
+        // xhr.setRequestHeader("HTTP_X_REQUESTED_WITH", "XMLHttpRequest")
+        // xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest")
+        // 上面两句是为了让XMLHttpRequest的is_ajax()为True
+        xhr.onload = function() {
+            // const newTweet = xhr.response
+            // console.log(newTweet)
+            if (xhr.status === 201) {
+                handleTweetFormError('', false) //false 小写
+                const newTweet = xhr.response
+                // console.log(newTweet.likes)//undefined
+                // const newTweetJson = JSON.parse(newTweet)
+                const newTweetElement = formatTweetElement(newTweet)
+                // tweetsElement.prepend(newTweetElement)
+                tweetsElement.innerHTML = newTweetElement + tweetsElement.innerHTML
+                myForm.reset()
+            } 
+            else if (xhr.status === 400 ) {
+                const errorJson = xhr.response
+                console.log(errorJson)
+                const contentError = errorJson.content
+                let contentErrorMsg;
+                if (contentError) {
+                    contentErrorMsg = contentError[0]
+                    if (contentErrorMsg) {
+                        handleTweetFormError(contentErrorMsg, true)
+                    } 
+                    else {
+                        alert("Another Error occured. Please Try again")
+                    }
+                }
+                else {
+                    alert("Another Error occured.")
+                }
+            } 
+            else if (xhr.status === 401 ) {
+                alert("You must login!")
+                window.location.href = "/login"
+            }
+            else if (xhr.status === 403 ) {
+                // 来自 @permission_classes([IsAuthenticated]) 的否定返回 xhr.status # REST API course
+                alert("You must login!")
+                window.location.href = "/login"
+            }
+            else if (xhr.status === 500 ) {
+                // views.py 里面写错就会报这个错， 例如print(abc)
+                alert("There was a server error, Please Try again!")
+            }
+            // console.log(serverResponse.status, serverResponse)//status是xhr的属性
+            loadTweets(tweetsElement)
+        }
+        xhr.onerror = function() {
+            // 关闭runserver可以报这条错
+            alert("An error ocuurred. Please Try again")
+        }
+        xhr.send(myFormData)
+        // console.log(myFormData.entries()) //myFormData 和 myFormData.entries()都是空，console不出来东西，但却可以循环出来myFormData.entries()里面的东西
+        for (var myItem of myFormData.entries()) {
+            // console.log(myItem)
+        }
+        */
+    }
+    const tweetCreateFormEl = document.getElementById('tweet-create-form')
+    tweetCreateFormEl.addEventListener('submit', handleTweetCreateFormDidSubmit)
+    // 上面的submit调用的方法不需要有参数,event 自动生成submitEvent
+    const tweetsElement = document.getElementById("tweets")
+    function loadTweets(tweetsEl) {
+        const xhr = new XMLHttpRequest()
+        const method = 'GET' //'POST'
+        const url = "/tweets"
+        const responseType = "json"
+        xhr.responseType = responseType
+        xhr.open(method, url)
+        xhr.onload = function() {
+            const serverResponse = xhr.response
+            // var listedItems =serverResponse.response
+            var listedItems =serverResponse
+            var finalTweetStr = ""
+            for(var i = 0; i < listedItems.length; i++) {
+                finalTweetStr = formatTweetElement(listedItems[i]) + finalTweetStr
+            }
+            tweetsEl.innerHTML = finalTweetStr
+        }
+        xhr.send()
+    }
+    loadTweets(tweetsElement)
+    function handleTweetActionBtn(tweet_id, currentCount, action) {
+        console.log(tweet_id, currentCount)
+    }
+    function LikeBtn(tweet) {
+        return "<button class='btn btn-primary btn-sm' onclick=handleTweetActionBtn(" + tweet.id +"," + tweet.likes + ",'like')>" + tweet.likes + " Likes</button>"
+    }
+    function UnLikeBtn(tweet) {
+        return "<button class='btn btn-outline-primary btn-sm' onclick=handleTweetActionBtn(" + tweet.id +"," + tweet.likes + ",'unlike')>Unlike</button>"
+    }
+    function RetweetBtn(tweet) {
+        return "<button class='btn btn-outline-success btn-sm' onclick=handleTweetActionBtn(" + tweet.id +"," + tweet.likes + ",'retweet')>Retweet</button>"
+    }
+    function formatTweetElement(tweet) {
+        var formattedTweet = "<div class='col-12 col-md-10 mx-auto border rounded py-3 mb-4 tweet' id='tweet_" + tweet.id 
+        +"'><p>" + tweet.content
+           + "</p><div class='btn-group'>" 
+            + LikeBtn(tweet)
+            + UnLikeBtn(tweet)
+            + RetweetBtn(tweet)
+            + "</div></div>"
+        return formattedTweet
+    }
+</script>
+{% endblock scripts %}

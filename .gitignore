@@ -1,0 +1,5 @@
+templates/pages/home copy.html
+migrations/
+__pycache__/
+.vscode
+db.sqlite3
